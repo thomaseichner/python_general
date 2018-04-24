@@ -7,28 +7,28 @@ __author__ = 'thomas'
 #[]{}
 
 import sqlite3
-#maybe switch to: (should only need to exchange to connection setup and cursor)
-#import psycopg2
-import logging
+import os
 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
-LOGGER = logging.getLogger(__name__)
+import python_general.library.baseobject
 
 
-class DatabaseConnection():
+class DatabaseConnection(python_general.library.baseobject.BaseObject):
     """
     Class that provides the database connectivity. On init, a connection to a given
     database is established. Database is selected by giving its path and filename
     """
 
-    def __init__(self, db_path=u'../Database', db_name=u'Database1', separator=u'/'):
+    def __init__(self, db_path='', db_name='', *args, **kwargs):
+        super().__init__(*args, **kwargs)
         if db_path:
-            database_descriptor = u'{}{}{}'.format(db_path, separator, db_name)
-        else:
+            database_descriptor = os.path.join(db_path, db_name)
+        elif db_name:
             database_descriptor = db_name
+        else:
+            database_descriptor = ':memory:'
         self.conn = sqlite3.connect(database_descriptor)
         self.cursor = self.conn.cursor()
-        LOGGER.info('Setup of Database connection')
+        self.log.info('Setup of Database connection: {}'.format(database_descriptor))
 
     def create_table(self, table_name, columns, col_types, primary_key=None):
         """
@@ -38,7 +38,7 @@ class DatabaseConnection():
         :param col_types: types of the given columns, same order (can be a string if only one column)
         :return: True if existence could be verified, False otherwise
         """
-        if isinstance(columns, basestring) and isinstance(col_types, basestring):
+        if isinstance(columns, str) and isinstance(col_types, str):
             columns = [columns]
             col_types = [col_types]
         assert len(columns) == len(col_types)
@@ -46,19 +46,19 @@ class DatabaseConnection():
         for i, colname in enumerate(columns):
             entries.append(u'{} {}'.format(colname, col_types[i]))
         if primary_key:
-            if isinstance(primary_key, basestring):
+            if isinstance(primary_key, str):
                 primary_key = [primary_key]
             pk_sql = u''', PRIMARY KEY ({})'''.format(', '.join(primary_key))
         else:
             pk_sql = u''
         sql = u'''create table {} (
         {}{} )'''.format(table_name, ', '.join(entries), pk_sql)
-        LOGGER.debug(sql)
+        self.log.debug(sql)
         self.cursor.execute(sql)
         if self.check_table_exists(table_name):
             return True
         else:
-            LOGGER.warning('Error creating and varifying table {}'.format(table_name))
+            self.log.warning('Error creating and varifying table {}'.format(table_name))
             return False
 
     def check_table_exists(self, table_name):
@@ -69,11 +69,11 @@ class DatabaseConnection():
         """
         sql = u'''select count(1) from {} where 1=2'''.format(table_name)
         try:
-            LOGGER.debug('Checking for table {}'.format(table_name))
+            self.log.debug('Checking for table {}'.format(table_name))
             self.cursor.execute(sql).fetchone()
             return True
         except sqlite3.OperationalError:
-            LOGGER.debug('Table {} not there'.format(table_name))
+            self.log.debug('Table {} not there'.format(table_name))
             return False
 
     def get_columns(self, table_name):
@@ -84,7 +84,7 @@ class DatabaseConnection():
         """
         if not self.check_table_exists(table_name):
             raise sqlite3.InterfaceError
-        LOGGER.debug('Getting column names for table {}'.format(table_name))
+        self.log.debug('Getting column names for table {}'.format(table_name))
         sql = u''' select * from {table_name} where 1=2'''.format(table_name=table_name)
         cols = self.cursor.execute(sql).description
         return tuple([col[0] for col in cols])
@@ -111,7 +111,7 @@ class DatabaseConnection():
         cols = ', '.join(columns)
         sql = u''' insert into {tname} ({columns}) values ({entries})'''.format(tname=table, columns=cols,
                                                                                 entries=entries)
-        LOGGER.debug('Inserting values into table {}'.format(table))
+        self.log.debug('Inserting values into table {}'.format(table))
         return self.execute_sql(sql, commit)
 
     def execute_sql(self, sql, commit=True):
@@ -121,7 +121,7 @@ class DatabaseConnection():
         :param commit: True if commit should be done (default)
         :return: True if succeeded, otherwise none
         """
-        LOGGER.debug('Executing query: {}'.format(sql))
+        self.log.debug('Executing query: {}'.format(sql))
         self.cursor.execute(sql)
         if commit:
             self.conn.commit()
@@ -139,7 +139,7 @@ class DatabaseConnection():
         sql = u'''alter table {} add column {} {}'''.format(table, column_name, column_type)
         if not self.check_table_exists(table):
             raise sqlite3.InterfaceError
-        LOGGER.debug('Adding column {} to table {}'.format(column_name, table))
+        self.log.debug('Adding column {} to table {}'.format(column_name, table))
         return self.execute_sql(sql, commit)
 
     def update_value(self, table, updated_column, value, cols_hit_condition, hit_con_values, commit=True):
@@ -172,16 +172,16 @@ class DatabaseConnection():
         :return: return of the query, probably list of lists / None in case of error
         """
         try:
-            LOGGER.debug('Executing query: {}'.format(sql))
+            self.log.debug('Executing query: {}'.format(sql))
             self.cursor.execute(sql)
             data = self.cursor.fetchall()
             return data
         except sqlite3.OperationalError:
-            LOGGER.error('Error executing sql {}'.format(sql))
+            self.log.error('Error executing sql {}'.format(sql))
             return None
 
-if __name__ == '__main__':
 
-    DB = DatabaseConnection()
+if __name__ == '__main__':
+    DB = DatabaseConnection(loglevel='DEBUG')
     print(DB.get_columns('users_login_test'))
     print(DB.insert_single_row('users_login_test', ['User4', 'user4'], ['name', 'pwd']))
