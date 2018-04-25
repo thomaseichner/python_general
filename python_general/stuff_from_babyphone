@@ -1,0 +1,148 @@
+import yaml
+import platform
+
+if platform.system().lower() == 'windows':
+    CONFIG_PATH = 'D:\\babyphone\\src\\config\\{}.yml'
+    SYSTEM_ENV = 'windows'
+else:
+    CONFIG_PATH = 'config/{}.yml'
+    SYSTEM_ENV = 'linux'
+
+
+def merge_config(config_common, config_sys):
+    if not bool(set(config_common.keys()) & set(config_sys.keys())):
+        config_common.update(config_sys)
+        return config_common
+    else:
+        for key in (set(config_common.keys()) & set(config_sys.keys())):
+            return {key: merge_config(config_common[key], config_sys[key])}
+
+
+def get_config(module):
+    module = module.split('.')[-1]
+    config = open(CONFIG_PATH.format(module), 'r')
+    config = yaml.load(config)
+    config = merge_config(config.get('common', {}), config.get(SYSTEM_ENV, {}))
+    return config
+
+
+import logging
+
+
+class BaseLogger(object):
+    def __init__(self, loglevel='INFO', *args, **kwargs):
+        logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.logger.setLevel(loglevel)
+        super().__init__()
+        
+        
+        
+import pymongo
+
+import src.library.logger
+
+
+class MongoDb(src.library.logger.BaseLogger):
+    def __init__(self, host='localhost', port=27017, timeout_secs=30, user='', password='', *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.logger.info('Setting up connection to: host: {} port: {}'.format(host, port))
+        self.client = pymongo.MongoClient(self.create_connect_string(host, port, user, password),
+                                          serverSelectionTimeoutMS=timeout_secs*1000)
+        self.current_db_name = None
+
+    def create_connect_string(self, host, port, user, password):
+        credentials = ''
+        if user and password:
+            credentials = '{}:{}@'.format(user, password)
+        return 'mongodb://{}{}:{}'.format(credentials, host, port)
+
+    def get_all_available_databases(self):
+        return self.client.database_names()
+
+    def set_current_database(self, db_name):
+        self.logger.debug('Entering DB: {}'.format(db_name))
+        assert db_name in self.get_all_available_databases()
+        self.current_db_name = db_name
+
+    def get_all_collections(self, db_name=None):
+        db_name = self.get_used_db_name(db_name)
+        return db_name.collection_names()
+
+    def get_used_db_name(self, db_name):
+        if not db_name:
+            assert self.current_db_name
+            db_name = self.current_db_name
+        return db_name
+
+    def get_cursor_to_collection(self, collection_name, db_name=None):
+        db_name = self.get_used_db_name(db_name)
+        db = self.client.get_database(db_name)
+        return db.get_collection(collection_name)
+
+    def read_collection(self, collection_name, db_name=None):
+        cursor = self.get_cursor_to_collection(collection_name, db_name=db_name)
+        return [i for i in cursor.find()]
+
+    def create_and_set_db(self, name, **kwargs):
+        assert name not in self.get_all_available_databases()
+        self.logger.info('Creating Database: {}'.format(name))
+        self.current_db_name = name
+        return self.client.get_database(name, **kwargs)
+
+    def create_collection(self, name, db_name=None):
+        assert name not in self.get_all_collections(db_name=db_name)
+        return self.get_cursor_to_collection(name, db_name=db_name)
+
+    def insert_data(self, data, collection_name, db_name=None):
+        coll = self.get_cursor_to_collection(collection_name, db_name=db_name)
+        if type(data) == dict:
+            data = [data]
+        assert len(data) > 0
+        if type(data[0]) != dict:
+            self.logger.warning('No idea how to insert data of type: {}'.format(type(data[0])))
+        coll.insert_many(data)
+
+    def is_alive(self):
+        try:
+            ret = self.client.server_info()
+            self.logger.debug('Got DBServer Info: {}'.format(ret))
+            return True
+        except pymongo.errors.ServerSelectionTimeoutError:
+            self.logger.warning('DBServer at {}:{} not responding'.format(self.client.HOST, self.client.PORT))
+            return False
+
+    def __del__(self):
+        self.client.close()
+        
+        
+        
+        
+import pytest
+import platform
+
+import src.library.config_reader
+
+
+def test_get_config():
+    cfg = src.library.config_reader.get_config('test_config_reader')
+    assert 'Test' in cfg.keys()
+    if platform.system().lower() == 'windows':
+        assert cfg == {'Test': {'test1': 25, 'var': 1, 'var2': 2, 'next_lev': {'lev': 3}}}
+    else:
+        assert cfg == {'Test': {'test1': 25, 'var': 2}}
+        
+ 
+ 
+import pytest
+
+import src.library.logger
+
+
+@pytest.mark.parametrize('loglevel',
+                         ['DEBUG',
+                          'INFO'])
+def test_logger_init(loglevel):
+    bs = src.library.logger.BaseLogger(loglevel=loglevel)
+    bs.logger.debug('DEBUG')
+    bs.logger.error('ERROR')
