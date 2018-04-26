@@ -6,7 +6,7 @@ import datetime
 from unittest import TestCase
 import pytest
 
-from Library.databaseconnection import DatabaseConnection
+from python_general.library.db.sqlite_db import SQLite3Database
 
 
 TEST_TABLE_NAME = 'UserLoginTest'
@@ -16,10 +16,9 @@ TEST_TABLE_NAME2 = 'TestEmptyTable'
 class TestDatabaseConnection(TestCase):
 
     def setUp(self):
-        self.db = DatabaseConnection(db_path=u'', db_name=u':memory:')
+        self.db = SQLite3Database(db_path=u'', db_name=u':memory:')
         self.db.create_table(TEST_TABLE_NAME, ['id', 'name', 'pwd'], ['integer', 'text', 'text'])
         self.db.insert_single_row(TEST_TABLE_NAME, ['User4', 'user4'], ['name', 'pwd'])
-        self.db.get_data(u'''select name, pwd from {}'''.format(TEST_TABLE_NAME)) == [('User4', 'user4')]
 
     def tearDown(self):
         del self.db
