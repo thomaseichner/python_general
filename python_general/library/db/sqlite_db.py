@@ -183,5 +183,7 @@ class DatabaseConnection(python_general.library.baseobject.BaseObject):
 
 if __name__ == '__main__':
     DB = DatabaseConnection(loglevel='DEBUG')
+    DB.create_table('users_login_test', ['name', 'pwd'], ['VARCHAR', 'VARCHAR'])
     print(DB.get_columns('users_login_test'))
     print(DB.insert_single_row('users_login_test', ['User4', 'user4'], ['name', 'pwd']))
+    print(DB.get_data('select * from users_login_test'))
