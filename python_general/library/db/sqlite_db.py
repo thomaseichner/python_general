@@ -12,7 +12,7 @@ import os
 import python_general.library.baseobject
 
 
-class DatabaseConnection(python_general.library.baseobject.BaseObject):
+class SQLite3Database(python_general.library.baseobject.BaseObject):
     """
     Class that provides the database connectivity. On init, a connection to a given
     database is established. Database is selected by giving its path and filename
@@ -182,7 +182,7 @@ class DatabaseConnection(python_general.library.baseobject.BaseObject):
 
 
 if __name__ == '__main__':
-    DB = DatabaseConnection(loglevel='DEBUG')
+    DB = SQLite3Database(loglevel='DEBUG')
     DB.create_table('users_login_test', ['name', 'pwd'], ['VARCHAR', 'VARCHAR'])
     print(DB.get_columns('users_login_test'))
     print(DB.insert_single_row('users_login_test', ['User4', 'user4'], ['name', 'pwd']))
