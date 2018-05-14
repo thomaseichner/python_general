@@ -25,18 +25,6 @@ def get_config(module):
     config = merge_config(config.get('common', {}), config.get(SYSTEM_ENV, {}))
     return config
 
-
-import logging
-
-
-class BaseLogger(object):
-    def __init__(self, loglevel='INFO', *args, **kwargs):
-        logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        self.logger = logging.getLogger(self.__class__.__name__)
-        self.logger.setLevel(loglevel)
-        super().__init__()
-        
-        
         
 import pymongo
 
@@ -118,19 +106,6 @@ class MongoDb(src.library.logger.BaseLogger):
         
         
         
-import pytest
-import platform
 
-import src.library.config_reader
-
-
-def test_get_config():
-    cfg = src.library.config_reader.get_config('test_config_reader')
-    assert 'Test' in cfg.keys()
-    if platform.system().lower() == 'windows':
-        assert cfg == {'Test': {'test1': 25, 'var': 1, 'var2': 2, 'next_lev': {'lev': 3}}}
-    else:
-        assert cfg == {'Test': {'test1': 25, 'var': 2}}
-        
  
  
