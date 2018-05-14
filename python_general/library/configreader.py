@@ -17,4 +17,4 @@ class ConfigReader(python_general.library.baseobject.BaseObject):
         if kwargs.get("config_file", None):
             config = open(kwargs.get("config_file"), "r")
             self.config = yaml.load(config)
-            self.log.info(self.config)
+            self.log.debug(self.config)
