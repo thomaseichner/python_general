@@ -134,15 +134,3 @@ def test_get_config():
         
  
  
-import pytest
-
-import src.library.logger
-
-
-@pytest.mark.parametrize('loglevel',
-                         ['DEBUG',
-                          'INFO'])
-def test_logger_init(loglevel):
-    bs = src.library.logger.BaseLogger(loglevel=loglevel)
-    bs.logger.debug('DEBUG')
-    bs.logger.error('ERROR')
