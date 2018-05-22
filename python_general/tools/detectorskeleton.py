@@ -10,9 +10,6 @@ import abc
 
 import python_general.tools.singleton
 
-import sensor_reader
-import tools.data_logger
-
 
 class DetectorSkeleton(python_general.tools.singleton.Singleton):
     __metaclass__ = abc.ABCMeta
